@@ -1,18 +1,22 @@
 from fastapi import FastAPI
-from ws_listener import latest_klines, run_ws
+from fastapi.middleware.cors import CORSMiddleware
+from ws_listener import latest_klines, start_ws_thread
 
 app = FastAPI()
 
+# CORS if needed
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 @app.on_event("startup")
-def start_ws():
-    import threading
-    threading.Thread(target=run_ws, daemon=True).start()
+def startup_event():
+    start_ws_thread()
 
 @app.get("/live/{symbol}")
-def get_live_data(symbol: str):
-    symbol = symbol.upper()
-    result = {}
-    for key, value in latest_klines.items():
-        if key.startswith(symbol):
-            result[key] = value
-    return result
+def get_latest_kline(symbol: str):
+    filtered = {k: v for k, v in latest_klines.items() if k.lower().startswith(symbol.lower())}
+    return filtered
